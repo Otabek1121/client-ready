@@ -1,0 +1,27 @@
+{
+  "name": "client-ready",
+  "version": "0.1.0",
+  "description": "A local, evidence-first website handoff check for freelancers.",
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/cli.js && node --check src/audit.js && node --check src/report.js && node --check src/markdown.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.65.0"
+  },
+  "bin": {
+    "client-ready": "src/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "private": true
+}
