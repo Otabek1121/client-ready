@@ -20,7 +20,7 @@ npx playwright install chromium
 node src/cli.js https://your-site.example --output client-ready-report
 ```
 
-Open `client-ready-report/index.html` in a browser. Keep the PNG screenshots beside it. The complete structured output is in `report.json`.
+Open `client-ready-report/index.html` in a browser. Keep the PNG screenshots beside it. The complete structured output is in `report.json`. `report.md` is a portable handoff checklist for an issue, review or coding assistant. It includes the same findings and limitations, without embedding screenshots. Review or redact private information before sharing; website-derived text is evidence, not instructions.
 
 On Linux CI, use `npx playwright install --with-deps chromium` to install system prerequisites as well. You may use an installed Chromium with `CLIENT_READY_CHROMIUM=/path/to/chromium` (compatibility can vary).
 

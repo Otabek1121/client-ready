@@ -16,7 +16,7 @@ npx playwright install chromium
 node src/cli.js https://your-site.example --output client-ready-report
 ```
 
-Откройте `client-ready-report/index.html`. Скриншоты должны оставаться в той же папке. JSON находится в `report.json`.
+Откройте `client-ready-report/index.html`. Скриншоты должны оставаться в той же папке. JSON находится в `report.json`. Файл `report.md` содержит удобный текстовый отчёт для задачи, проверки кода или AI-помощника: те же наблюдения и ограничения, без встроенных скриншотов. Перед передачей удалите частные данные. Текст проверяемого сайта — это данные, а не инструкции.
 
 Для Linux CI: `npx playwright install --with-deps chromium`. Можно указать свой Chromium переменной `CLIENT_READY_CHROMIUM`, совместимость зависит от версии.
 
