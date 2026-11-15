@@ -83,3 +83,5 @@ MIT license. Built with [Playwright](https://playwright.dev/).
 Redirects for the main page and resources are blocked too. Supply the final canonical URL. WebSocket connections are blocked.
 
 Output directories must be empty; use a new folder for every run. A failed run may leave partial output. A report is complete only after the CLI confirms success (exit 0, or exit 1 with `--fail-on-error`).
+
+Same-page `#fragment` links are checked against IDs and named anchors in each sampled DOM, without clicking or making extra requests. Missing targets are warnings because delayed content may not exist yet. Empty/top anchors, text fragments, malformed percent encodings and fragments on other pages are not reported as broken. This is not a full navigation or accessibility audit.

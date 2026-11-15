@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import { missingFragments } from './fragments.js';
 import { mkdir, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -65,10 +66,12 @@ export async function audit(target, { output = 'client-ready-report', maxLinks =
           lang: document.documentElement.lang,
           overflow: [...document.querySelectorAll('body *')].filter(el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && (r.right > innerWidth + 2 || r.left < -2); }).slice(0, 30).map(identify),
           images: [...document.images].map(el => ({ src: el.currentSrc || el.src, broken: el.complete && el.naturalWidth === 0, pending: !el.complete, element: identify(el) })),
-          links: [...document.querySelectorAll('a[href]')].map(el => el.href)
+          links: [...document.querySelectorAll('a[href]')].map(el => el.href),
+          fragmentTargets: [...document.querySelectorAll('[id], a[name]')].flatMap(el => [el.id, el.tagName === 'A' ? el.getAttribute('name') : null]).filter(Boolean)
         };
       });
       for (const key of ['title', 'description', 'viewportMeta', 'lang']) if (!data[key]) add('warning', 'metadata', `Missing ${key}`, viewport.name);
+      for (const fragment of missingFragments(data.links, page.url(), data.fragmentTargets)) add('warning', 'fragment', `No target for same-page fragment #${fragment} in the sampled DOM; delayed content may need manual review.`, viewport.name);
       for (const el of data.overflow) add('warning', 'overflow', 'Element extends beyond viewport; inspect screenshot (may be intentional).', viewport.name, el);
       for (const img of data.images) {
         if (!img.src) add('warning', 'image', 'Image has no source.', viewport.name, img.element);
