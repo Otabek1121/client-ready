@@ -15,6 +15,7 @@ export function isAllowedRequest(value, method, origin) {
 export async function audit(target, { output = 'client-ready-report', maxLinks = 20, timeout = 15000, executablePath } = {}) {
   const url = normalizeTarget(target);
   if (!Number.isInteger(maxLinks) || maxLinks < 0 || maxLinks > 100) throw new Error('maxLinks must be 0–100.');
+  if (!Number.isInteger(timeout) || timeout < 100 || timeout > 60000) throw new Error('timeout must be an integer from 100 to 60000 milliseconds.');
   await mkdir(output, { recursive: true });
   if ((await readdir(output)).length) throw new Error('Output directory must be empty. Choose a new --output folder to preserve previous reports.');
   const browser = await chromium.launch({ executablePath });
@@ -27,6 +28,8 @@ export async function audit(target, { output = 'client-ready-report', maxLinks =
   };
   try {
     const context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
+    context.setDefaultTimeout(timeout);
+    context.setDefaultNavigationTimeout(timeout);
     await context.route('**/*', async route => {
       const request = route.request();
       const allowed = isAllowedRequest(request.url(), request.method(), url.origin);

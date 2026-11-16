@@ -22,7 +22,7 @@ test('CLI writes all report formats, uses exit codes and preserves existing outp
  const target=`http://127.0.0.1:${server.address().port}`;
  try {
   const out=join(root,'normal');
-  const normal=await run([target,'-o',out,'--max-links','0']);
+  const normal=await run([target,'-o',out,'--max-links','0','--timeout','10000']);
   assert.equal(normal.code,0,normal.stderr);
   const json=JSON.parse(await readFile(join(out,'report.json'),'utf8'));
   assert.ok(json.findings.some(f=>f.check==='image' && f.severity==='error'));
@@ -37,4 +37,18 @@ test('CLI writes all report formats, uses exit codes and preserves existing outp
   assert.equal(strict.code,1,strict.stderr);
   assert.ok((await readFile(join(root,'strict','report.md'),'utf8')).includes('Client Ready handoff report'));
  } finally {server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await rm(root,{recursive:true,force:true});}
+});
+
+
+test('CLI rejects invalid timeout values before creating output', async () => {
+ const root = await mkdtemp(join(tmpdir(), 'client-ready-options-'));
+ try {
+  for (const value of ['0', '-1', '99', '60001', 'Infinity', 'NaN', '1.5', '']) {
+   const out = join(root, 'invalid');
+   const result = await run(['http://127.0.0.1:1', '-o', out, `--timeout=${value}`]);
+   assert.equal(result.code, 2, result.stderr);
+   assert.match(result.stderr, /timeout must be an integer/);
+   await assert.rejects(readFile(join(out, 'report.json')), {code:'ENOENT'});
+  }
+ } finally { await rm(root, {recursive:true, force:true}); }
 });

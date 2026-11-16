@@ -46,3 +46,23 @@ test('network boundary permits only same-origin GET/HEAD without credentials', (
  assert.ok(isAllowedRequest('https://example.org/a', 'HEAD', origin));
  for (const [url, method] of [['https://example.org/a','POST'],['https://other.org/a','GET'],['https://name:password@example.org/a','GET'],['file:///etc/passwd','GET'],['not-a-url','GET']]) assert.equal(isAllowedRequest(url, method, origin), false);
 });
+
+
+test('audit rejects unbounded or invalid timeout before starting browser', async () => {
+ for (const timeout of [0, -1, 99, 60001, Infinity, NaN, 1.5, '15000', null]) {
+  await assert.rejects(audit('http://127.0.0.1:1', {timeout}), /timeout must be an integer/);
+ }
+});
+
+test('slow navigation fails within configured timeout', {timeout:10000}, async () => {
+ const server = createServer(() => {}); // Deliberately never responds.
+ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+ const output = await mkdtemp(join(tmpdir(), 'client-ready-timeout-'));
+ try {
+  await assert.rejects(audit(`http://127.0.0.1:${server.address().port}`, {output, timeout:200, executablePath:process.env.CLIENT_READY_CHROMIUM}), /Timeout|net::ERR_FAILED/);
+ } finally {
+  server.closeAllConnections();
+  await new Promise(resolve => server.close(resolve));
+  await rm(output, {recursive:true, force:true});
+ }
+});

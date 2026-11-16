@@ -85,3 +85,5 @@ Redirects for the main page and resources are blocked too. Supply the final cano
 Output directories must be empty; use a new folder for every run. A failed run may leave partial output. A report is complete only after the CLI confirms success (exit 0, or exit 1 with `--fail-on-error`).
 
 Same-page `#fragment` links are checked against IDs and named anchors in each sampled DOM, without clicking or making extra requests. Missing targets are warnings because delayed content may not exist yet. Empty/top anchors, text fragments, malformed percent encodings and fragments on other pages are not reported as broken. This is not a full navigation or accessibility audit.
+
+Use `--timeout 10000` to set a 10-second per-operation timeout (default: 15000 milliseconds; allowed integers: 100–60000). It applies to navigation, resource requests, HEAD checks and browser operations such as screenshots. It is not an overall audit deadline: sequential links and the two viewports can take longer in total. Zero is rejected instead of disabling timeouts. A navigation timeout fails the run with exit 2; individual request/HEAD failures are reported for manual review.
