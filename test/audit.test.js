@@ -66,3 +66,28 @@ test('slow navigation fails within configured timeout', {timeout:10000}, async (
   await rm(output, {recursive:true, force:true});
  }
 });
+
+test('each viewport starts with fresh cookies and local storage', {timeout:30000}, async () => {
+ const cookies = [];
+ const server = createServer((req, res) => {
+  if (req.url !== '/') { res.end(); return; }
+  cookies.push(req.headers.cookie || '');
+  res.setHeader('Content-Type', 'text/html');
+  res.end(`<html lang="en"><head><title>Fresh visit</title></head><body><script>
+   if (localStorage.getItem('visited') || document.cookie.includes('visited=')) document.title = 'Contaminated visit';
+   localStorage.setItem('visited', 'yes');
+   document.cookie = 'visited=yes; path=/';
+  </script></body></html>`);
+ });
+ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+ const output = await mkdtemp(join(tmpdir(), 'client-ready-isolation-'));
+ try {
+  const report = await audit(`http://127.0.0.1:${server.address().port}`, {output, maxLinks:0, executablePath:process.env.CLIENT_READY_CHROMIUM});
+  assert.deepEqual(report.pages.map(page => page.title), ['Fresh visit', 'Fresh visit']);
+  assert.deepEqual(cookies, ['', '']);
+ } finally {
+  server.closeAllConnections();
+  await new Promise(resolve => server.close(resolve));
+  await rm(output, {recursive:true, force:true});
+ }
+});

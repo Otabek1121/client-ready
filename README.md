@@ -89,3 +89,5 @@ Same-page `#fragment` links are checked against IDs and named anchors in each sa
 Use `--timeout 10000` to set a 10-second per-operation timeout (default: 15000 milliseconds; allowed integers: 100–60000). It applies to navigation, resource requests, HEAD checks and browser operations such as screenshots. It is not an overall audit deadline: sequential links and the two viewports can take longer in total. Zero is rejected instead of disabling timeouts. A navigation timeout fails the run with exit 2; individual request/HEAD failures are reported for manual review.
 
 Browser startup and page JavaScript evaluation are not controlled by `--timeout`; it does not protect against a hung page script.
+
+Each viewport starts in a separate fresh browser session: cookies and local storage from the desktop sample cannot change the mobile sample. This makes both samples first visits, not a multi-device user journey. Server-side state is not reset.

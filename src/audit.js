@@ -27,32 +27,33 @@ export async function audit(target, { output = 'client-ready-report', maxLinks =
     else omittedFindings++;
   };
   try {
-    const context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
-    context.setDefaultTimeout(timeout);
-    context.setDefaultNavigationTimeout(timeout);
-    await context.route('**/*', async route => {
-      const request = route.request();
-      const allowed = isAllowedRequest(request.url(), request.method(), url.origin);
-      if (!allowed) { blockedRequests++; await route.abort('blockedbyclient'); return; }
-      try {
-        // Playwright's route.continue follows redirect chains without rerouting.
-        // Fetch without redirects, then reject every redirect before the browser sees it.
-        const response = await route.fetch({ maxRedirects: 0, timeout });
-        try {
-          if (response.status() >= 300 && response.status() < 400) {
-            blockedRequests++;
-            add('warning', 'redirect-blocked', `Redirect blocked: ${request.url()}. Use the final canonical URL or review this resource manually.`);
-            await route.fulfill({ status: 409, contentType: 'text/plain', body: 'Client Ready blocked a redirect.' });
-          } else await route.fulfill({ response });
-        } finally { await response.dispose(); }
-      } catch {
-        blockedRequests++;
-        add('warning', 'request-unverified', `Resource request failed or timed out: ${request.url()}`);
-        await route.abort('failed').catch(() => {});
-      }
-    });
-    await context.routeWebSocket('**/*', socket => { blockedRequests++; socket.close(); });
     for (const viewport of [{ name: 'desktop', width: 1440, height: 900 }, { name: 'mobile', width: 390, height: 844 }]) {
+      // Each viewport represents a new visitor, not a continuation of the desktop session.
+      const context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
+      context.setDefaultTimeout(timeout);
+      context.setDefaultNavigationTimeout(timeout);
+      await context.route('**/*', async route => {
+        const request = route.request();
+        const allowed = isAllowedRequest(request.url(), request.method(), url.origin);
+        if (!allowed) { blockedRequests++; await route.abort('blockedbyclient'); return; }
+        try {
+          // Playwright's route.continue follows redirect chains without rerouting.
+          // Fetch without redirects, then reject every redirect before the browser sees it.
+          const response = await route.fetch({ maxRedirects: 0, timeout });
+          try {
+            if (response.status() >= 300 && response.status() < 400) {
+              blockedRequests++;
+              add('warning', 'redirect-blocked', `Redirect blocked: ${request.url()}. Use the final canonical URL or review this resource manually.`);
+              await route.fulfill({ status: 409, contentType: 'text/plain', body: 'Client Ready blocked a redirect.' });
+            } else await route.fulfill({ response });
+          } finally { await response.dispose(); }
+        } catch {
+          blockedRequests++;
+          add('warning', 'request-unverified', `Resource request failed or timed out: ${request.url()}`);
+          await route.abort('failed').catch(() => {});
+        }
+      });
+      await context.routeWebSocket('**/*', socket => { blockedRequests++; socket.close(); });
       const page = await context.newPage();
       await page.setViewportSize(viewport);
       page.on('pageerror', error => add('error', 'javascript', error.message, viewport.name));
@@ -104,9 +105,9 @@ export async function audit(target, { output = 'client-ready-report', maxLinks =
         }
         if (links.length > maxLinks) add('info', 'limit', `${links.length - maxLinks} links omitted by limit.`);
       }
-      await page.close();
+      await context.close();
     }
     if (omittedFindings) findings.push({ severity: 'warning', check: 'limit', message: `${omittedFindings} findings omitted after the 500-finding cap.`, viewport: null, element: null });
-    return { version: 1, target: url.href, generatedAt: new Date().toISOString(), findings, pages, checkedLinks, blockedRequests, limits: ['One page, two viewports, no scrolling or interaction.', 'Cross-origin resources blocked; CDN-dependent sites may look incomplete.', 'Only same-origin HEAD links checked; redirects not followed.', 'GET/HEAD requests can still change a poorly designed site. Run only on sites you may test.', 'Screenshots and URLs may contain private data. Review before sharing.', 'Not a security, accessibility, SEO ranking, or exhaustive readiness audit.'] };
+    return { version: 1, target: url.href, generatedAt: new Date().toISOString(), findings, pages, checkedLinks, blockedRequests, limits: ['One page, two viewports, no scrolling or interaction.', 'Each viewport starts in a separate fresh browser session; server-side state is not reset.', 'Cross-origin resources blocked; CDN-dependent sites may look incomplete.', 'Only same-origin HEAD links checked; redirects not followed.', 'GET/HEAD requests can still change a poorly designed site. Run only on sites you may test.', 'Screenshots and URLs may contain private data. Review before sharing.', 'Not a security, accessibility, SEO ranking, or exhaustive readiness audit.'] };
   } finally { await browser.close(); }
 }
