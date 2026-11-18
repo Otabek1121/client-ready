@@ -12,8 +12,10 @@ A small local CLI for freelancers and people building websites with AI. Give it 
 
 Node.js 22+ and a supported Playwright Chromium environment are required.
 
+> Trying the unmerged draft: the implementation is currently in [PR #1](https://github.com/Otabek1121/client-ready/pull/1), on `feat/initial-checker`. The commands below select that branch because `main` contains only a placeholder README. These are temporary draft instructions, not a released version. Revisit this branch selection after the PR is merged.
+
 ```sh
-git clone https://github.com/Otabek1121/client-ready.git
+git clone --branch feat/initial-checker https://github.com/Otabek1121/client-ready.git
 cd client-ready
 npm ci
 npx playwright install chromium

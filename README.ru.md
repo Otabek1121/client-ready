@@ -8,8 +8,10 @@
 
 Нужны Node.js 22+ и Chromium для Playwright.
 
+> Как попробовать черновик: код пока находится в [PR №1](https://github.com/Otabek1121/client-ready/pull/1), в ветке `feat/initial-checker`. Команды ниже сразу выбирают её, потому что в `main` пока только краткий README. Это временная инструкция для неопубликованной версии. После объединения PR выбор ветки нужно пересмотреть.
+
 ```sh
-git clone https://github.com/Otabek1121/client-ready.git
+git clone --branch feat/initial-checker https://github.com/Otabek1121/client-ready.git
 cd client-ready
 npm ci
 npx playwright install chromium
