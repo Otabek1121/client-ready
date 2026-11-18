@@ -91,3 +91,5 @@ Use `--timeout 10000` to set a 10-second per-operation timeout (default: 15000 m
 Browser startup and page JavaScript evaluation are not controlled by `--timeout`; it does not protect against a hung page script.
 
 Each viewport starts in a separate fresh browser session: cookies and local storage from the desktop sample cannot change the mobile sample. This makes both samples first visits, not a multi-device user journey. Server-side state is not reset.
+
+HEAD link candidates come from both sampled DOMs, including links inserted only at mobile widths. URLs are deduplicated after removing fragments. `--max-links` is a single total budget, used in desktop-first discovery order; a URL seen in both samples is checked once, not once per viewport. The report counts unique candidates omitted by that shared limit. This is still a DOM sample, not a check of menus that require interaction.

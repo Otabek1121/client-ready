@@ -20,6 +20,7 @@ export async function audit(target, { output = 'client-ready-report', maxLinks =
   if ((await readdir(output)).length) throw new Error('Output directory must be empty. Choose a new --output folder to preserve previous reports.');
   const browser = await chromium.launch({ executablePath });
   const findings = [], pages = [], checkedLinks = [];
+  const discoveredLinks = new Set();
   let blockedRequests = 0;
   let omittedFindings = 0;
   const add = (severity, check, message, viewport = null, element = null) => {
@@ -89,11 +90,14 @@ export async function audit(target, { output = 'client-ready-report', maxLinks =
       const screenshot = `${viewport.name}.png`;
       await page.screenshot({ path: resolve(output, screenshot), fullPage: false });
       pages.push({ viewport: viewport.name, url: page.url(), title: data.title, screenshot });
-      if (viewport.name === 'desktop') {
+      {
+        // One shared budget across both DOM samples, desktop-first.
         const links = [...new Set(data.links.flatMap(value => {
           try { const link = new URL(value); if (!isAllowedRequest(link.href, 'HEAD', url.origin)) return []; link.hash = ''; return [link.href]; } catch { return []; }
         }))].filter(link => link !== url.href);
-        for (const link of links.slice(0, maxLinks)) {
+        const newLinks = links.filter(link => !discoveredLinks.has(link));
+        for (const link of newLinks) discoveredLinks.add(link);
+        for (const link of newLinks.slice(0, maxLinks - checkedLinks.length)) {
           try {
             // HEAD only: never fall back to fetching a potentially state-changing GET link.
             const res = await context.request.head(link, { timeout, maxRedirects: 0 });
@@ -103,11 +107,11 @@ export async function audit(target, { output = 'client-ready-report', maxLinks =
             await res.dispose();
           } catch (error) { checkedLinks.push({ url: link, status: null }); add('warning', 'link-unverified', `${link}: ${error.message.split('\n')[0]}`); }
         }
-        if (links.length > maxLinks) add('info', 'limit', `${links.length - maxLinks} links omitted by limit.`);
       }
       await context.close();
     }
+    if (discoveredLinks.size > checkedLinks.length) add('info', 'limit', `${discoveredLinks.size - checkedLinks.length} links omitted by limit.`);
     if (omittedFindings) findings.push({ severity: 'warning', check: 'limit', message: `${omittedFindings} findings omitted after the 500-finding cap.`, viewport: null, element: null });
-    return { version: 1, target: url.href, generatedAt: new Date().toISOString(), findings, pages, checkedLinks, blockedRequests, limits: ['One page, two viewports, no scrolling or interaction.', 'Each viewport starts in a separate fresh browser session; server-side state is not reset.', 'Cross-origin resources blocked; CDN-dependent sites may look incomplete.', 'Only same-origin HEAD links checked; redirects not followed.', 'GET/HEAD requests can still change a poorly designed site. Run only on sites you may test.', 'Screenshots and URLs may contain private data. Review before sharing.', 'Not a security, accessibility, SEO ranking, or exhaustive readiness audit.'] };
+    return { version: 1, target: url.href, generatedAt: new Date().toISOString(), findings, pages, checkedLinks, blockedRequests, limits: ['One page, two viewports, no scrolling or interaction.', 'Each viewport starts in a separate fresh browser session; server-side state is not reset.', 'Cross-origin resources blocked; CDN-dependent sites may look incomplete.', 'Same-origin HEAD links from both sampled DOMs share one desktop-first limit; duplicates checked once and redirects not followed.', 'GET/HEAD requests can still change a poorly designed site. Run only on sites you may test.', 'Screenshots and URLs may contain private data. Review before sharing.', 'Not a security, accessibility, SEO ranking, or exhaustive readiness audit.'] };
   } finally { await browser.close(); }
 }

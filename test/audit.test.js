@@ -91,3 +91,35 @@ test('each viewport starts with fresh cookies and local storage', {timeout:30000
   await rm(output, {recursive:true, force:true});
  }
 });
+
+test('HEAD checks include mobile-only links with global deduplication and cap', {timeout:60000}, async () => {
+ const requests = [];
+ const server = createServer((req, res) => {
+  requests.push(`${req.method} ${req.url}`);
+  if (req.url !== '/') {res.statusCode = req.url === '/mobile-dead' ? 404 : 200; res.end(); return;}
+  res.setHeader('Content-Type', 'text/html');
+  res.end(`<html lang="en"><head><title>Responsive links</title></head><body>
+   <a href="/shared#one">Shared</a><a href="/shared#two">Shared again</a>
+   <script>const a = document.createElement('a'); a.href = innerWidth < 600 ? '/mobile-dead' : '/desktop'; a.textContent = 'Viewport link'; document.body.append(a);</script>
+  </body></html>`);
+ });
+ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+ const root = await mkdtemp(join(tmpdir(), 'client-ready-responsive-'));
+ try {
+  for (const maxLinks of [3, 1, 0]) {
+   requests.length = 0;
+   const report = await audit(`http://127.0.0.1:${server.address().port}`, {output:join(root, String(maxLinks)), maxLinks, executablePath:process.env.CLIENT_READY_CHROMIUM});
+   const expected = ['/shared', '/desktop', '/mobile-dead'].slice(0, maxLinks);
+   assert.deepEqual(report.checkedLinks.map(link => new URL(link.url).pathname), expected);
+   assert.deepEqual(requests.filter(request => request.startsWith('HEAD ')), expected.map(path => `HEAD ${path}`));
+   assert.ok(!requests.some(request => /^GET \/(shared|desktop|mobile-dead)/.test(request)));
+   assert.equal(report.findings.some(finding => finding.check === 'link' && finding.message.includes('/mobile-dead')), maxLinks === 3);
+   const omitted = report.findings.filter(finding => finding.check === 'limit' && finding.message.includes('links omitted'));
+   assert.deepEqual(omitted.map(finding => finding.message), maxLinks === 3 ? [] : [`${3 - maxLinks} links omitted by limit.`]);
+  }
+ } finally {
+  server.closeAllConnections();
+  await new Promise(resolve => server.close(resolve));
+  await rm(root, {recursive:true, force:true});
+ }
+});
